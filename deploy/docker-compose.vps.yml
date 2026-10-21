@@ -1,0 +1,109 @@
+# Production-style stack for a shared VPS. Instructions only: the human deploys it (see VPS_DEPLOY.md).
+#   - nothing is published except the web UI and API on 127.0.0.1 (a reverse proxy fronts them)
+#   - the database has NO published port; it is reachable only on the crms_internal network
+#   - every container has a memory limit; the volume is crms_-prefixed
+#   - Docker is observed through a read-only socket proxy; docker.sock is mounted into the proxy only
+name: crms
+
+services:
+  db:
+    build: ../db/docker
+    image: crms-db:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_cron,pg_stat_statements
+      - -c
+      - cron.database_name=crms
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - max_connections=40
+    volumes:
+      - crms_pgdata:/var/lib/postgresql/data
+      - ../db:/db:ro
+      - ../deploy:/deploy:ro
+    networks: [crms_internal]
+    shm_size: 128mb
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crms"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://crms_app:${CRMS_APP_PASSWORD:?set CRMS_APP_PASSWORD}@db:5432/crms
+      READONLY_DATABASE_URL: postgres://crms_readonly:${CRMS_READONLY_PASSWORD:?set CRMS_READONLY_PASSWORD}@db:5432/crms
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (openssl rand -hex 32)}
+      PORT: "4000"
+    ports:
+      - "127.0.0.1:${API_PORT:-14000}:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [crms_internal]
+    mem_limit: 256m
+
+  web:
+    build: ../web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-18088}:80"
+    depends_on: [api]
+    networks: [crms_internal]
+    mem_limit: 64m
+
+  collector:
+    build: ../collector
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://crms_collector:${CRMS_COLLECTOR_PASSWORD:?set CRMS_COLLECTOR_PASSWORD}@db:5432/crms
+      COLLECTOR_MODE: docker
+      COLLECTOR_INTERVAL_SECONDS: ${COLLECTOR_INTERVAL_SECONDS:-30}
+      COLLECTOR_REGION: ${COLLECTOR_REGION:-vps}
+      DOCKER_HOST: tcp://docker-proxy:2375
+    depends_on:
+      db:
+        condition: service_healthy
+      docker-proxy:
+        condition: service_started
+    networks: [crms_internal]
+    mem_limit: 128m
+
+  # Read-only view of the Docker Engine API. POST=0 blocks every write (create/start/stop/exec);
+  # only containers, networks, volumes and /info are readable. No published port.
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.2.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      NETWORKS: 1
+      VOLUMES: 1
+      INFO: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [crms_internal]
+    mem_limit: 32m
+
+networks:
+  crms_internal:
+    name: crms_internal
+
+volumes:
+  crms_pgdata:
+    name: crms_pgdata
