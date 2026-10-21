@@ -5,3 +5,5 @@ dist/
 *.log
 .DS_Store
 deploy/.env
+PROMPT.md
+CLAUDE.md
