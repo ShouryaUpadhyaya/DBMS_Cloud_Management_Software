@@ -129,8 +129,10 @@ CREATE TRIGGER trg_allocation_close AFTER UPDATE OF state ON resources
 -- type. A deferred constraint trigger checks at COMMIT so the resource and its subtype can be
 -- inserted in either order inside one transaction. (Disjointness is the composite FK in 003.)
 -- ---------------------------------------------------------------------------------------------
+-- SECURITY DEFINER because deferred triggers fire at COMMIT, after the calling procedure has
+-- returned, i.e. with the privileges of the connected role (e.g. crms_collector, who can read nothing).
 CREATE FUNCTION fn_resource_total() RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_ok boolean;
 BEGIN

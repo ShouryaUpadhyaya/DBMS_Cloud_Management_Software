@@ -3,7 +3,8 @@ SELECT set_config('t.carol', pg_temp.uid('carol@crms.test')::text, true),
        set_config('t.admin', pg_temp.uid('admin@crms.test')::text, true),
        set_config('t.alice', pg_temp.uid('alice@crms.test')::text, true),
        set_config('t.wp', pg_temp.pid('Web Platform')::text, true),
-       set_config('t.dl', pg_temp.pid('Data Lab')::text, true) \gset
+       set_config('t.dl', pg_temp.pid('Data Lab')::text, true),
+       set_config('t.etl', pg_temp.rid('etl-1')::text, true) \gset
 
 -- ===== crms_app as carol (viewer of Web Platform only) =====
 SELECT set_config('crms.user_id', current_setting('t.carol'), true);
@@ -23,9 +24,8 @@ BEGIN
   PERFORM pg_temp.assert((SELECT count(*) FROM invoice_line_items) > 0 AND NOT EXISTS (
       SELECT 1 FROM invoice_line_items li JOIN invoices i USING (invoice_id) WHERE i.project_id <> wp), 'RLS: invoice lines');
   PERFORM pg_temp.assert((SELECT count(*) FROM usage_metrics WHERE ts > now() - interval '1 day') > 0, 'metrics visible for own resources');
-  PERFORM pg_temp.assert((SELECT count(DISTINCT resource_id) FROM usage_metrics WHERE ts > now() - interval '1 hour') =
-                         (SELECT count(*) FROM resources WHERE type_id IN (1, 2) AND state = 'running' AND name <> 'bastion'),
-                         'metrics only for visible resources (RLS: usage_metrics)');
+  PERFORM pg_temp.assert(NOT EXISTS (SELECT 1 FROM usage_metrics WHERE resource_id = current_setting('t.etl')::int), 'RLS: usage_metrics of another project (etl-1) are invisible');
+  PERFORM pg_temp.assert(NOT EXISTS (SELECT 1 FROM usage_metrics m WHERE m.resource_id NOT IN (SELECT resource_id FROM resources)), 'RLS: metrics visible exactly when their resource is');
   PERFORM pg_temp.assert(NOT EXISTS (SELECT 1 FROM log_entries l WHERE l.resource_id NOT IN (SELECT resource_id FROM resources)) AND (SELECT count(*) FROM log_entries) > 0, 'RLS: log_entries');
   PERFORM pg_temp.assert(NOT EXISTS (SELECT 1 FROM v_active_resources WHERE project_id <> wp), 'view v_active_resources honours RLS');
   PERFORM pg_temp.assert(NOT EXISTS (SELECT 1 FROM v_logs WHERE project_id <> wp), 'view v_logs honours RLS');
@@ -137,6 +137,10 @@ DO $t$
 BEGIN
   PERFORM pg_temp.assert((sp_ingest_logs('{"logs": []}') ->> 'logs')::int = 0, 'collector can ingest logs');
   PERFORM pg_temp.assert((sp_ingest_metrics('{"metrics": []}') ->> 'metrics')::int = 0, 'collector can ingest metrics');
+  -- a brand-new discovered resource: the deferred totality trigger must work with the collector's own rights
+  PERFORM sp_ingest_metrics('{"node": {"hostname": "sec-node"}, "resources": [{"external_id": "sec-1", "type": "compute", "name": "sec-container"}]}');
+  SET CONSTRAINTS ALL IMMEDIATE;
+  SET CONSTRAINTS ALL DEFERRED;
   PERFORM pg_temp.expect_error($$SELECT * FROM resources$$, '42501', 'collector cannot read resources');
   PERFORM pg_temp.expect_error($$SELECT * FROM users$$, '42501', 'collector cannot read users');
   PERFORM pg_temp.expect_error($$INSERT INTO usage_metrics VALUES (1, now(), 'cpu_percent', 1)$$, '42501', 'collector cannot write tables directly');

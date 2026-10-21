@@ -74,6 +74,9 @@ BEGIN
   PERFORM pg_temp.expect_error(format($$INSERT INTO alert_rules (project_id, metric, operator, threshold, window_seconds) VALUES (%s, 'cpu_percent', '!=', 1, 60)$$, wp), '23514', 'alert operator enum');
   PERFORM pg_temp.expect_error(format($$INSERT INTO alert_rules (project_id, metric, operator, threshold, window_seconds) VALUES (%s, 'cpu_percent', '>', 1, 0)$$, wp), '23514', 'alert window > 0');
   PERFORM pg_temp.expect_error($$UPDATE alert_events SET resolved_at = fired_at - interval '1 hour' WHERE resolved_at IS NOT NULL$$, '23514', 'resolved_at >= fired_at');
-  PERFORM pg_temp.expect_error($$INSERT INTO alert_events (rule_id, resource_id, peak_value) SELECT rule_id, resource_id, 1 FROM alert_events WHERE resolved_at IS NULL LIMIT 1$$, '23505', 'one open alert per rule+resource');
+  INSERT INTO alert_events (rule_id, resource_id, peak_value)
+  SELECT ar.rule_id, r.resource_id, 1 FROM resources r JOIN alert_rules ar ON ar.project_id = r.project_id AND ar.metric = 'cpu_percent' WHERE r.name = 'web-1';
+  PERFORM pg_temp.expect_error($$INSERT INTO alert_events (rule_id, resource_id, peak_value)
+    SELECT ar.rule_id, r.resource_id, 2 FROM resources r JOIN alert_rules ar ON ar.project_id = r.project_id AND ar.metric = 'cpu_percent' WHERE r.name = 'web-1'$$, '23505', 'one open alert per rule+resource');
   PERFORM pg_temp.expect_error($$INSERT INTO audit_log (table_name, op, row_pk) VALUES ('x', 'MERGE', '1')$$, '23514', 'audit op enum');
 END $t$;

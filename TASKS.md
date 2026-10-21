@@ -21,16 +21,16 @@
 - [x] race test (shell, concurrent sessions) + demo-race
 - [x] db/queries named showcase queries + explain_before_after demo
 ## 5 Collector
-- [ ] mock mode
-- [ ] docker mode + Dockerfile
+- [x] mock mode
+- [x] docker mode + Dockerfile
 ## 6 API
-- [ ] scaffold, db helper (request tx, retry), auth
-- [ ] registry (views, procedures, queries), routes, SSE
-- [ ] API tests (vitest + supertest)
+- [x] scaffold, db helper (request tx, retry), auth
+- [x] registry (views, procedures, queries), routes, SSE
+- [x] API tests (vitest + supertest)
 ## 7 Web UI
-- [ ] scaffold, auth, layout, dark mode, generic components
-- [ ] Dashboard, Resources, Resource detail, Launch wizard
-- [ ] Monitoring, Logs, Alerts, Billing, Access, Audit, DB Lab
+- [x] scaffold, auth, layout, dark mode, generic components
+- [x] Dashboard, Resources, Resource detail, Launch wizard
+- [x] Monitoring, Logs, Alerts, Billing, Access, Audit, DB Lab
 ## 8 Docs
 - [ ] README, ER diagram, normalization, viva notes, VPS_DEPLOY + compose.vps
 ## 9 Final verification

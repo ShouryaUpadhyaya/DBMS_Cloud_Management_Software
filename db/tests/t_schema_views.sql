@@ -90,7 +90,11 @@ BEGIN
                          'cost view equals the sum of fn_resource_cost');
   PERFORM pg_temp.assert((SELECT cost_mtd FROM v_project_cost_mtd WHERE project_name = 'Unassigned') = 0, 'idle project costs 0');
 
-  PERFORM pg_temp.assert((SELECT count(*) FROM v_open_alerts WHERE resource_name = 'api-1' AND metric = 'mem_percent') = 1, 'seeded open alert shown');
+  -- (the live collector resolves seeded events, so open one explicitly)
+  INSERT INTO alert_events (rule_id, resource_id, peak_value)
+  SELECT ar.rule_id, r.resource_id, 97 FROM resources r JOIN alert_rules ar ON ar.project_id = r.project_id AND ar.metric = 'cpu_percent'
+   WHERE r.name = 'web-2';
+  PERFORM pg_temp.assert((SELECT count(*) FROM v_open_alerts WHERE resource_name = 'web-2' AND metric = 'cpu_percent') = 1, 'open alert shown');
   PERFORM pg_temp.assert(NOT EXISTS (SELECT 1 FROM v_open_alerts o JOIN alert_events e USING (event_id) WHERE e.resolved_at IS NOT NULL), 'resolved alerts hidden');
   PERFORM pg_temp.assert((SELECT count(*) FROM v_alert_history) > (SELECT count(*) FROM v_open_alerts), 'history includes resolved events');
 

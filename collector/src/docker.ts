@@ -119,6 +119,11 @@ export class DockerSource implements Source {
     const metrics: MetricPoint[] = [];
     const logs: LogLine[] = [];
 
+    // The Docker host's own name keeps the node stable across collector restarts (inside a container,
+    // os.hostname() is the container id). Needs INFO=1 on the socket proxy; falls back otherwise.
+    let hostname = os.hostname();
+    try { hostname = (await this.docker.json<{ Name?: string }>('/info')).Name || hostname; } catch { /* INFO not allowed */ }
+
     const networks = await this.docker.json<NetworkSummary[]>('/networks');
     for (const n of networks) {
       const subnet = n.IPAM?.Config?.find((c) => c.Subnet && !c.Subnet.includes(':'))?.Subnet;
@@ -175,7 +180,7 @@ export class DockerSource implements Source {
         }
       } catch { /* logs unavailable (e.g. log driver none) */ }
     }
-    return { node: { hostname: os.hostname(), region: this.region }, resources, metrics, logs };
+    return { node: { hostname, region: this.region }, resources, metrics, logs };
   }
 }
 

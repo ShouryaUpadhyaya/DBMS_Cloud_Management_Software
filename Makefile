@@ -7,7 +7,7 @@ DBEXEC  := $(DC) exec -T db
 PSQL    := $(DBEXEC) psql -U postgres -d crms -v ON_ERROR_STOP=1
 DB_URL  := postgres://crms_app:$${CRMS_APP_PASSWORD:-crms_app_dev}@127.0.0.1:$${DB_PORT:-55432}/crms
 
-.PHONY: reset up down clean migrate seed test test-sql test-race test-api test-web test-all demo-race demo-explain lint psql wait-db
+.PHONY: demo-alert reset up down clean migrate seed test test-sql test-race test-api test-web test-all demo-race demo-explain lint psql wait-db
 
 up:            ## build and start the whole stack
 	$(DC) up -d --build
@@ -50,6 +50,9 @@ test-all: test test-api test-web
 
 demo-race:     ## two concurrent sessions: unsafe vs safe provisioning
 	$(DBEXEC) bash /db/demo/run_race.sh
+
+demo-alert:    ## fire a live CPU alert (watch the toast in the UI)
+	$(PSQL) -f /db/demo/fire_alert.sql
 
 demo-explain:  ## index effect on >=1M metric rows
 	$(PSQL) -f /db/demo/explain_before_after.sql
