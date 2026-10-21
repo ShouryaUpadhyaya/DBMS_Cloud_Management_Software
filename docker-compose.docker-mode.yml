@@ -1,0 +1,23 @@
+# Optional override for collector docker mode:
+#   docker compose -f docker-compose.yml -f docker-compose.docker-mode.yml up -d
+# The socket is mounted read-only into the proxy only; the collector talks to the proxy.
+name: crms
+
+services:
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.2.0
+    environment:
+      CONTAINERS: 1
+      NETWORKS: 1
+      VOLUMES: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    mem_limit: 32m
+
+  collector:
+    environment:
+      COLLECTOR_MODE: docker
+      DOCKER_HOST: tcp://docker-proxy:2375
+    depends_on:
+      - docker-proxy

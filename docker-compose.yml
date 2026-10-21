@@ -1,0 +1,59 @@
+name: crms
+
+services:
+  db:
+    build: ./db/docker
+    image: crms-db:16
+    environment:
+      POSTGRES_DB: crms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crms_pg_dev}
+    ports:
+      - "127.0.0.1:${DB_PORT:-55432}:5432"
+    volumes:
+      - crms_pgdata:/var/lib/postgresql/data
+      - ./db:/db:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crms"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    mem_limit: 1g
+
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgres://crms_app:${CRMS_APP_PASSWORD:-crms_app_dev}@db:5432/crms
+      READONLY_DATABASE_URL: postgres://crms_readonly:${CRMS_READONLY_PASSWORD:-crms_readonly_dev}@db:5432/crms
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      PORT: "4000"
+    ports:
+      - "127.0.0.1:${API_PORT:-4000}:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 256m
+
+  web:
+    build: ./web
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8088}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    mem_limit: 64m
+
+  collector:
+    build: ./collector
+    environment:
+      DATABASE_URL: postgres://crms_collector:${CRMS_COLLECTOR_PASSWORD:-crms_collector_dev}@db:5432/crms
+      COLLECTOR_MODE: ${COLLECTOR_MODE:-mock}
+      COLLECTOR_INTERVAL_SECONDS: ${COLLECTOR_INTERVAL_SECONDS:-30}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 128m
+
+volumes:
+  crms_pgdata:
