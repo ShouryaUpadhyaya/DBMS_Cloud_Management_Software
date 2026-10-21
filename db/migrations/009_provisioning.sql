@@ -236,7 +236,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_id integer;
 BEGIN
-  IF session_user IN ('crms_app', 'crms_readonly') AND NOT fn_is_admin() THEN
+  IF fn_is_app_caller() AND NOT fn_is_admin() THEN
     RAISE EXCEPTION 'Permission denied: only admins manage billing cycles' USING ERRCODE = 'insufficient_privilege';
   END IF;
   INSERT INTO billing_cycles (period) VALUES (tstzrange(p_from, p_to)) RETURNING cycle_id INTO v_id;

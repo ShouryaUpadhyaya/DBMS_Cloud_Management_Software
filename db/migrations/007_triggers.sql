@@ -9,6 +9,14 @@ LANGUAGE sql STABLE AS $$
   SELECT nullif(current_setting('crms.user_id', true), '')::integer
 $$;
 
+-- True when the caller is one of the application roles (by login or via SET ROLE). Procedures use
+-- it to tell a user-facing connection (must carry a user) from a trusted maintenance session.
+CREATE FUNCTION fn_is_app_caller() RETURNS boolean
+LANGUAGE sql STABLE AS $$
+  SELECT session_user IN ('crms_app', 'crms_readonly', 'crms_collector')
+      OR coalesce(current_setting('role', true), 'none') IN ('crms_app', 'crms_readonly', 'crms_collector')
+$$;
+
 -- ---------------------------------------------------------------------------------------------
 -- trg_audit: ONE generic function for every audited table (to_jsonb(OLD/NEW) makes it
 -- schema-agnostic). TG_ARGV lists the primary-key column(s) so row_pk can be built generically.

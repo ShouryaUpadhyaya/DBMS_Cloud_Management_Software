@@ -11,7 +11,7 @@ DECLARE
   v_proj  integer;
   v_inv   integer;
 BEGIN
-  IF session_user IN ('crms_app', 'crms_readonly') AND NOT fn_is_admin() THEN
+  IF fn_is_app_caller() AND NOT fn_is_admin() THEN
     RAISE EXCEPTION 'Permission denied: only admins generate invoices' USING ERRCODE = 'insufficient_privilege';
   END IF;
   SELECT * INTO v_cycle FROM billing_cycles bc WHERE bc.cycle_id = p_cycle;
@@ -216,5 +216,6 @@ BEGIN
     EXECUTE format('DROP TABLE %I', v_part.relname);
     v_dropped := v_dropped || v_part.relname::text;
   END LOOP;
-  RETURN coalesce('dropped: ' || array_to_string(v_dropped, ', '), 'dropped: none');
+  RETURN CASE WHEN cardinality(v_dropped) = 0 THEN 'dropped: none'
+              ELSE 'dropped: ' || array_to_string(v_dropped, ', ') END;
 END $$;

@@ -67,7 +67,7 @@ WITH RECURSIVE chain(user_id, project_id, role_name, role_id, parent_role_id, vi
 SELECT u.user_id, u.email, c.project_id, pr.name AS project_name, c.role_name AS role,
        perm.action, perm.resource_type, c.via_role AS inherited_from
   FROM chain c
-  JOIN users u ON u.user_id = c.user_id
+  JOIN users u ON u.user_id = c.user_id AND u.status = 'active'      -- suspended users have no effective rights
   JOIN projects pr ON pr.project_id = c.project_id
   JOIN role_permissions rp ON rp.role_id = c.role_id
   JOIN permissions perm ON perm.perm_id = rp.perm_id
@@ -161,12 +161,17 @@ SELECT m.resource_id, r.name AS resource_name, r.project_id, m.day, m.metric,
   FROM mv_daily_usage m JOIN resources r ON r.resource_id = m.resource_id
  WHERE fn_can_see_project(r.project_id);
 
-CREATE VIEW v_stat_statements AS
-SELECT queryid, calls, round(total_exec_time::numeric, 2) AS total_ms, round(mean_exec_time::numeric, 3) AS mean_ms,
-       rows, left(query, 300) AS query
-  FROM pg_stat_statements
- WHERE fn_is_admin()
- ORDER BY total_exec_time DESC LIMIT 25;
+-- pg_stat_statements needs rights the app role does not have, so a guarded definer function wraps it.
+CREATE FUNCTION fn_stat_statements()
+RETURNS TABLE (queryid bigint, calls bigint, total_ms numeric, mean_ms numeric, rows bigint, query text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT s.queryid, s.calls, round(s.total_exec_time::numeric, 2), round(s.mean_exec_time::numeric, 3),
+         s.rows, left(s.query, 300)
+    FROM pg_stat_statements s
+   WHERE fn_is_admin()
+   ORDER BY s.total_exec_time DESC LIMIT 25
+$$;
+CREATE VIEW v_stat_statements AS SELECT * FROM fn_stat_statements();
 
 -- Downsampled series for charts: caller's RLS applies (SECURITY INVOKER is the default).
 CREATE FUNCTION fn_metric_series(p_resource integer, p_metric text, p_from timestamptz, p_to timestamptz,

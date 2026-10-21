@@ -12,12 +12,14 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
 $$;
 
 CREATE FUNCTION fn_is_admin() RETURNS boolean
-LANGUAGE sql STABLE AS $$ SELECT coalesce(fn_user_is_admin(fn_current_user()), false) $$;
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$ SELECT coalesce(fn_user_is_admin(fn_current_user()), false) $$;
 
 CREATE FUNCTION fn_can_see_project(p_project integer) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
-  SELECT fn_is_admin() OR EXISTS (
-    SELECT 1 FROM project_members WHERE project_id = p_project AND user_id = fn_current_user())
+  SELECT fn_is_admin()
+      -- maintenance session: a non-application login (e.g. the migration superuser) with no user context
+      OR (fn_current_user() IS NULL AND NOT fn_is_app_caller())
+      OR EXISTS (SELECT 1 FROM project_members WHERE project_id = p_project AND user_id = fn_current_user())
 $$;
 
 -- Recursive CTE over the role hierarchy: start at the user's role in the project, walk up
@@ -51,7 +53,7 @@ DECLARE
   v_user integer := fn_current_user();
 BEGIN
   IF v_user IS NULL THEN
-    IF session_user IN ('crms_app', 'crms_readonly', 'crms_collector') THEN
+    IF fn_is_app_caller() THEN
       RAISE EXCEPTION 'No user context' USING ERRCODE = 'insufficient_privilege';
     END IF;
     RETURN;
@@ -97,7 +99,7 @@ CREATE FUNCTION fn_cost_segments(p_resource integer, p_from timestamptz, p_to ti
                                  p_project integer DEFAULT NULL)
 RETURNS TABLE (resource_id integer, plan_id integer, seg_start timestamptz, seg_end timestamptz,
                units numeric, unit_price numeric, amount numeric)
-LANGUAGE sql STABLE AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT a.resource_id, p.plan_id, lower(s.x), upper(s.x),
          round(extract(epoch FROM upper(s.x) - lower(s.x))::numeric / 3600
                * coalesce(ci.vcpus, sv.size_gb, 1), 4)                       AS units,
@@ -112,6 +114,7 @@ LANGUAGE sql STABLE AS $$
    CROSS JOIN LATERAL (SELECT a.period * tstzrange(p.effective_from, p.effective_to)
                               * tstzrange(p_from, p_to) AS x) s
    WHERE a.resource_id = p_resource
+     AND fn_can_see_project(a.project_id)          -- definer function: never leak other projects' costs
      AND (p_project IS NULL OR a.project_id = p_project)
      AND NOT isempty(s.x)
    ORDER BY lower(s.x)

@@ -47,11 +47,11 @@ GRANT SELECT ON resources, invoices, usage_metrics, log_entries, compute_instanc
       networks, network_attachments, invoice_line_items,
       projects, resource_types, nodes, payments, billing_cycles
   TO crms_app;
-GRANT EXECUTE ON FUNCTION fn_current_user(), fn_is_admin(), fn_can_see_project(integer),
+GRANT EXECUTE ON FUNCTION fn_current_user(), fn_is_app_caller(), fn_is_admin(), fn_can_see_project(integer),
       fn_has_permission(integer, integer, text, text), fn_next_free_ip(integer),
       fn_cost_segments(integer, timestamptz, timestamptz, integer),
       fn_resource_cost(integer, timestamptz, timestamptz),
-      fn_metric_series(integer, text, timestamptz, timestamptz, integer)
+      fn_metric_series(integer, text, timestamptz, timestamptz, integer), fn_stat_statements()
   TO crms_app, crms_readonly;
 GRANT EXECUTE ON FUNCTION sp_provision_vm(integer, text, integer, integer, integer, text),
       sp_provision_vm_unsafe(integer, text, integer, integer, integer, double precision, text),
