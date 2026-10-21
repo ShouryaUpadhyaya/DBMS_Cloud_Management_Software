@@ -7,7 +7,7 @@ DBEXEC  := $(DC) exec -T db
 PSQL    := $(DBEXEC) psql -U postgres -d crms -v ON_ERROR_STOP=1
 DB_URL  := postgres://crms_app:$${CRMS_APP_PASSWORD:-crms_app_dev}@127.0.0.1:$${DB_PORT:-55432}/crms
 
-.PHONY: up down clean migrate seed test test-sql test-race test-api test-web test-all demo-race demo-explain lint psql wait-db
+.PHONY: reset up down clean migrate seed test test-sql test-race test-api test-web test-all demo-race demo-explain lint psql wait-db
 
 up:            ## build and start the whole stack
 	$(DC) up -d --build
@@ -60,3 +60,9 @@ lint:          ## typecheck api, web, collector
 
 psql:
 	$(DC) exec db psql -U postgres -d crms
+
+reset:         ## wipe the database volume, then migrate and seed
+	$(DC) down -v
+	$(DC) up -d --build db
+	@$(MAKE) --no-print-directory wait-db
+	@$(MAKE) --no-print-directory migrate seed

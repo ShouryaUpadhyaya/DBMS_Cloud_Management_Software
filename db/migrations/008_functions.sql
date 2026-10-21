@@ -79,10 +79,10 @@ BEGIN
   ELSE
     v_size := 65534;
   END IF;
-  SELECT (network(v_cidr)::inet + g) INTO v_ip
+  SELECT host(network(v_cidr)::inet + g)::inet INTO v_ip
     FROM generate_series(1, least(v_size, 65534)::integer) AS g
    WHERE NOT EXISTS (SELECT 1 FROM network_attachments na
-                      WHERE na.network_id = p_network AND na.ip = network(v_cidr)::inet + g)
+                      WHERE na.network_id = p_network AND na.ip = host(network(v_cidr)::inet + g)::inet)
    ORDER BY g LIMIT 1;
   IF v_ip IS NULL THEN
     RAISE EXCEPTION 'Network % has no free addresses', p_network;

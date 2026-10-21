@@ -153,11 +153,12 @@ DECLARE
   v_cidr cidr;
 BEGIN
   SELECT cidr INTO v_cidr FROM networks WHERE resource_id = NEW.network_id;
+  NEW.ip := host(NEW.ip)::inet;                      -- store hosts as /32 (or /128) so UNIQUE compares equal
   IF NOT (NEW.ip << v_cidr) THEN
     RAISE EXCEPTION 'ip % is outside network %', NEW.ip, v_cidr USING ERRCODE = 'check_violation';
   END IF;
   IF family(v_cidr) = 4 AND masklen(v_cidr) < 31
-     AND (host(NEW.ip)::inet = network(v_cidr)::inet OR host(NEW.ip)::inet = broadcast(v_cidr)::inet) THEN
+     AND (NEW.ip = host(network(v_cidr))::inet OR NEW.ip = host(broadcast(v_cidr))::inet) THEN
     RAISE EXCEPTION 'ip % is the network or broadcast address of %', NEW.ip, v_cidr
       USING ERRCODE = 'check_violation';
   END IF;
