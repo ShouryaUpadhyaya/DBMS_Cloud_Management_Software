@@ -7,3 +7,6 @@ dist/
 deploy/.env
 PROMPT.md
 CLAUDE.md
+/loop.sh
+/settings.json
+/.done
