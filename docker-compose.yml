@@ -20,7 +20,9 @@ services:
     mem_limit: 1g
 
   api:
-    build: ./api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     environment:
       DATABASE_URL: postgres://crms_app:${CRMS_APP_PASSWORD:-crms_app_dev}@db:5432/crms
       READONLY_DATABASE_URL: postgres://crms_readonly:${CRMS_READONLY_PASSWORD:-crms_readonly_dev}@db:5432/crms
