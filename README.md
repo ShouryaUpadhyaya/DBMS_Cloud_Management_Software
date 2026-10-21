@@ -53,7 +53,8 @@ Start over: `make reset` (wipes the database volume, migrates, seeds). Stop: `ma
 | `make migrate` / `seed` / `reset` | schema, demo data, both from scratch |
 | `make test` | SQL tests (`db/tests/t_*.sql`), named-query checks, concurrency test, NOTIFY test |
 | `make test-api` | vitest + supertest against the real database |
-| `make test-web` | web unit tests are `npm test` in `web/`; this target runs the production build (typecheck + bundle) |
+| `make test-collector` | collector unit tests (mock curves, Docker stats/log parsing) |
+| `make test-web` | web unit tests plus the production build (typecheck + bundle) |
 | `make test-all` | all of the above |
 | `make demo-race` | two concurrent sessions: unsafe vs locked provisioning |
 | `make demo-explain` | before/after plans for every index on ≥1M rows |
