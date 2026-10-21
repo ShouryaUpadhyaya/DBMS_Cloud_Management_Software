@@ -32,6 +32,6 @@
 - [x] Dashboard, Resources, Resource detail, Launch wizard
 - [x] Monitoring, Logs, Alerts, Billing, Access, Audit, DB Lab
 ## 8 Docs
-- [ ] README, ER diagram, normalization, viva notes, VPS_DEPLOY + compose.vps
+- [x] README, ER diagram, normalization, viva notes, VPS_DEPLOY + compose.vps
 ## 9 Final verification
 - [ ] clean-clone verification, .done
