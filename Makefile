@@ -37,6 +37,7 @@ test-sql:
 	$(DBEXEC) bash /db/tests/run.sh
 
 test-race:
+	$(DBEXEC) bash /db/tests/notify_test.sh
 	$(DBEXEC) bash /db/tests/race_test.sh
 
 test-api:
