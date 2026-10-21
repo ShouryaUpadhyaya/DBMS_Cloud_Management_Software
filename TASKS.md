@@ -34,4 +34,4 @@
 ## 8 Docs
 - [x] README, ER diagram, normalization, viva notes, VPS_DEPLOY + compose.vps
 ## 9 Final verification
-- [ ] clean-clone verification, .done
+- [x] clean-clone verification, .done

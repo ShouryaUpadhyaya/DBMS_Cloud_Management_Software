@@ -9,3 +9,4 @@
 - Phases 5-7 done: collector (mock + docker, verified against the real Docker API through a read-only socket proxy), API (registry, SSE, 40 vitest tests), web console (11 screens, dark mode, verified with a headless-browser smoke test + wizard/quota/RLS flows).
 - Bug found by docker-mode test and fixed: deferred totality trigger runs at COMMIT with the caller's rights, so fn_resource_total is SECURITY DEFINER (covered in t_security).
 - Remaining: docs (README, ER diagram, normalization, viva notes, VPS deploy + compose.vps), final clean-clone verification.
+- Phase 8-9 done: docs written; VPS compose validated as a throw-away project (migrate, bootstrap admin, docker-mode collector, no DB port). Clean-clone verification passed: make up/migrate/seed/test, collector 7, API 40, web 5 tests + build, lint, headless-browser smoke over all screens.
